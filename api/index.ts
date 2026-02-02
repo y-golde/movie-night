@@ -45,12 +45,16 @@ const connectDB = async (): Promise<typeof mongoose> => {
   connectionPromise = (async () => {
     try {
       // Connect with options optimized for serverless
+      console.log('Attempting MongoDB connection...');
+      console.log('URI starts with:', MONGODB_URI.substring(0, 20));
+      
       await mongoose.connect(MONGODB_URI, {
         serverSelectionTimeoutMS: 15000, // Increased timeout
         socketTimeoutMS: 45000,
         maxPoolSize: 1, // Important for serverless - limit connections
         minPoolSize: 0,
         maxIdleTimeMS: 30000,
+        family: 4, // Force IPv4 - helps with serverless DNS issues
       });
 
       console.log('MongoDB connected successfully');
@@ -132,25 +136,65 @@ app.get('/health', async (req, res) => {
 
 // Root endpoint for debugging - handle both /api and /api/
 app.get('/api', (req, res) => {
+  const uri = MONGODB_URI || '';
   res.json({
     status: 'ok',
     message: 'API is running',
     timestamp: new Date().toISOString(),
     mongoConnected: (mongoose.connection.readyState as number) === 1,
+    readyState: mongoose.connection.readyState,
     path: req.path,
-    url: req.url
+    url: req.url,
+    // Debug info (masked)
+    mongoUriSet: !!MONGODB_URI,
+    mongoUriLength: uri.length,
+    mongoUriStart: uri.substring(0, 20) + '...',
+    envKeys: Object.keys(process.env).filter(k => k.includes('MONGO') || k.includes('VERCEL')),
   });
 });
 
 app.get('/api/', (req, res) => {
+  const uri = MONGODB_URI || '';
   res.json({
     status: 'ok',
     message: 'API is running',
     timestamp: new Date().toISOString(),
     mongoConnected: (mongoose.connection.readyState as number) === 1,
+    readyState: mongoose.connection.readyState,
     path: req.path,
-    url: req.url
+    url: req.url,
+    mongoUriSet: !!MONGODB_URI,
+    mongoUriLength: uri.length,
   });
+});
+
+// Debug endpoint to test connection
+app.get('/api/debug/connection', async (req, res) => {
+  const uri = MONGODB_URI || '';
+  const startTime = Date.now();
+  
+  try {
+    await connectDB();
+    const elapsed = Date.now() - startTime;
+    res.json({
+      status: 'connected',
+      elapsed: `${elapsed}ms`,
+      readyState: mongoose.connection.readyState,
+      host: mongoose.connection.host,
+      name: mongoose.connection.name,
+    });
+  } catch (error: any) {
+    const elapsed = Date.now() - startTime;
+    res.status(503).json({
+      status: 'failed',
+      elapsed: `${elapsed}ms`,
+      error: error.message,
+      readyState: mongoose.connection.readyState,
+      mongoUriSet: !!MONGODB_URI,
+      mongoUriLength: uri.length,
+      mongoUriStart: uri.substring(0, 30) + '...',
+    });
+  }
 });
 
 // Routes - Note: paths are relative to backend/src since that's where routes are
