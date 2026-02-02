@@ -236,7 +236,7 @@ router.get('/users', authenticate, async (req: AuthRequest, res: Response) => {
         const favoriteMovies = [];
         if (user.preferences?.favoriteMovieIds && user.preferences.favoriteMovieIds.length > 0) {
           try {
-            const { getMovieDetails, formatMovieForDB } = await import('../services/tmdb');
+            const { getMovieDetails, formatMovieForDB } = await import('../services/tmdb.js');
             const moviePromises = user.preferences.favoriteMovieIds.slice(0, 5).map(async (tmdbId: number) => {
               try {
                 const movieDetails = await getMovieDetails(tmdbId);
