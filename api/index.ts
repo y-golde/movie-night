@@ -18,25 +18,82 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// MongoDB connection
+// MongoDB connection - handle serverless properly
 const MONGODB_URI = process.env.MONGODB_URI || '';
 
-if (MONGODB_URI) {
-  mongoose
-    .connect(MONGODB_URI)
-    .then(() => {
-      console.log('Connected to MongoDB');
-    })
-    .catch((error) => {
-      console.error('MongoDB connection error:', error);
+let isConnected = false;
+
+const connectDB = async () => {
+  if (isConnected) {
+    return;
+  }
+
+  if (!MONGODB_URI) {
+    console.warn('MONGODB_URI not set - database operations will fail');
+    return;
+  }
+
+  try {
+    // Check if already connecting
+    if (mongoose.connection.readyState === 1) {
+      isConnected = true;
+      return;
+    }
+
+    // Connect with options for serverless
+    await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+      socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
     });
-} else {
-  console.warn('MONGODB_URI not set - database operations will fail');
-}
+    
+    isConnected = true;
+    console.log('Connected to MongoDB');
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    isConnected = false;
+    throw error;
+  }
+};
+
+// Handle connection events
+mongoose.connection.on('connected', () => {
+  isConnected = true;
+  console.log('MongoDB connected');
+});
+
+mongoose.connection.on('error', (err) => {
+  isConnected = false;
+  console.error('MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  isConnected = false;
+  console.log('MongoDB disconnected');
+});
+
+// Connect on first request
+connectDB().catch(console.error);
+
+// Middleware to ensure DB connection before handling requests
+app.use(async (req, res, next) => {
+  if (!isConnected && mongoose.connection.readyState !== 1) {
+    try {
+      await connectDB();
+    } catch (error) {
+      console.error('Failed to connect to MongoDB:', error);
+      // Continue anyway - some endpoints might not need DB
+    }
+  }
+  next();
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    mongoConnected: mongoose.connection.readyState === 1
+  });
 });
 
 // Root endpoint for debugging - handle both /api and /api/
