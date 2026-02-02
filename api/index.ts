@@ -88,16 +88,26 @@ mongoose.set('bufferMaxEntries', 0);
 
 // Middleware to ensure DB connection before handling requests
 app.use(async (req, res, next) => {
+  // Skip DB check for health endpoint
+  if (req.path === '/health' || req.path === '/api' || req.path === '/api/') {
+    return next();
+  }
+  
   try {
     await connectDB();
+    // Verify connection is actually ready
+    if ((mongoose.connection.readyState as number) !== 1) {
+      throw new Error('MongoDB connection not ready');
+    }
   } catch (error: any) {
     console.error('Failed to connect to MongoDB:', error);
     // Return error for API routes that need DB
     if (req.path.startsWith('/api/')) {
       return res.status(503).json({
         error: 'Database connection failed',
-        message: error.message || 'Unable to connect to database'
-      })
+        message: error.message || 'Unable to connect to database',
+        readyState: mongoose.connection.readyState
+      });
     }
   }
   next();
