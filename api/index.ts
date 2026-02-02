@@ -21,71 +21,50 @@ app.use(express.json());
 // MongoDB connection - handle serverless properly
 const MONGODB_URI = process.env.MONGODB_URI || '';
 
-let cachedConnection: typeof mongoose | null = null;
+let connectionPromise: Promise<typeof mongoose> | null = null;
 
 const connectDB = async (): Promise<typeof mongoose> => {
   // readyState: 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
   const readyState = mongoose.connection.readyState as number;
-
-  if (cachedConnection && readyState === 1) {
-    return cachedConnection;
+  
+  // Already connected
+  if (readyState === 1) {
+    return mongoose;
   }
 
   if (!MONGODB_URI) {
     throw new Error('MONGODB_URI is not set');
   }
 
-  // If already connecting, wait for it
-  if (readyState === 2) {
-    await new Promise((resolve) => {
-      mongoose.connection.once('connected', resolve);
-      mongoose.connection.once('error', resolve);
-    });
-    if ((mongoose.connection.readyState as number) === 1) {
-      cachedConnection = mongoose;
-      return mongoose;
-    }
+  // If already connecting, return the existing promise
+  if (readyState === 2 && connectionPromise) {
+    return connectionPromise;
   }
 
-  try {
-    // Connect with options optimized for serverless
-    cachedConnection = await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 15000, // Increased timeout
-      socketTimeoutMS: 45000,
-      connectTimeoutMS: 15000,
-      maxPoolSize: 1, // Important for serverless - limit connections
-      minPoolSize: 0,
-      maxIdleTimeMS: 30000,
-      bufferCommands: false, // Disable mongoose buffering - fail fast if not connected
-      bufferMaxEntries: 0,
-    });
-
-    // Wait for connection to be fully ready
-    if (mongoose.connection.readyState !== 1) {
-      await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('Connection timeout'));
-        }, 5000);
-        
-        mongoose.connection.once('connected', () => {
-          clearTimeout(timeout);
-          resolve(null);
-        });
-        
-        mongoose.connection.once('error', (err) => {
-          clearTimeout(timeout);
-          reject(err);
-        });
+  // Create new connection promise
+  connectionPromise = (async () => {
+    try {
+      // Connect with options optimized for serverless
+      await mongoose.connect(MONGODB_URI, {
+        serverSelectionTimeoutMS: 15000, // Increased timeout
+        socketTimeoutMS: 45000,
+        maxPoolSize: 1, // Important for serverless - limit connections
+        minPoolSize: 0,
+        maxIdleTimeMS: 30000,
+        bufferCommands: false, // Disable mongoose buffering - fail fast if not connected
+        bufferMaxEntries: 0,
       });
+      
+      console.log('MongoDB connected successfully');
+      return mongoose;
+    } catch (error) {
+      console.error('MongoDB connection error:', error);
+      connectionPromise = null;
+      throw error;
     }
+  })();
 
-    console.log('MongoDB connected successfully, readyState:', mongoose.connection.readyState);
-    return cachedConnection;
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    cachedConnection = null;
-    throw error;
-  }
+  return connectionPromise;
 };
 
 // Handle connection events
@@ -95,57 +74,30 @@ mongoose.connection.on('connected', () => {
 
 mongoose.connection.on('error', (err) => {
   console.error('MongoDB connection error:', err);
-  cachedConnection = null;
+  connectionPromise = null;
 });
 
 mongoose.connection.on('disconnected', () => {
   console.log('MongoDB disconnected');
-  cachedConnection = null;
+  connectionPromise = null;
 });
+
+// Set mongoose to not buffer commands - fail fast if not connected
+mongoose.set('bufferCommands', false);
+mongoose.set('bufferMaxEntries', 0);
 
 // Middleware to ensure DB connection before handling requests
 app.use(async (req, res, next) => {
-  // Skip DB check for health endpoint
-  if (req.path === '/health' || req.path === '/api' || req.path === '/api/') {
-    return next();
-  }
-
   try {
-    const connection = await connectDB();
-    // Ensure connection is actually ready
-    const readyState = mongoose.connection.readyState as number;
-    if (readyState !== 1) {
-      // Wait a bit more if still connecting
-      if (readyState === 2) {
-        await new Promise((resolve) => {
-          const timeout = setTimeout(() => resolve(null), 2000);
-          mongoose.connection.once('connected', () => {
-            clearTimeout(timeout);
-            resolve(null);
-          });
-          mongoose.connection.once('error', () => {
-            clearTimeout(timeout);
-            resolve(null);
-          });
-        });
-      }
-      
-      // Check again
-      if ((mongoose.connection.readyState as number) !== 1) {
-        throw new Error('MongoDB connection not ready');
-      }
-    }
+    await connectDB();
   } catch (error: any) {
     console.error('Failed to connect to MongoDB:', error);
-    console.error('MongoDB URI present:', !!MONGODB_URI);
-    console.error('Connection state:', mongoose.connection.readyState);
     // Return error for API routes that need DB
     if (req.path.startsWith('/api/')) {
       return res.status(503).json({
         error: 'Database connection failed',
-        message: error.message || 'Unable to connect to database',
-        readyState: mongoose.connection.readyState
-      });
+        message: error.message || 'Unable to connect to database'
+      })
     }
   }
   next();
