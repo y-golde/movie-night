@@ -1,7 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
+// IMPORTANT: Import mongoose from backend to use the SAME instance as routes
+// This ensures the connection is shared with all models
+import mongoose from '../backend/node_modules/mongoose';
 
 dotenv.config();
 
@@ -47,14 +49,22 @@ const connectDB = async (): Promise<typeof mongoose> => {
       // Connect with options optimized for serverless
       console.log('Attempting MongoDB connection...');
       console.log('URI starts with:', MONGODB_URI.substring(0, 20));
-      
-      await mongoose.connect(MONGODB_URI, {
+
+      // Ensure database name is in URI, default to movie-night if not specified
+      let uri = MONGODB_URI;
+      if (!uri.includes('mongodb.net/movie-night') && uri.includes('mongodb.net/')) {
+        // Database name might be missing or wrong
+        console.log('Warning: Check database name in MONGODB_URI');
+      }
+
+      await mongoose.connect(uri, {
         serverSelectionTimeoutMS: 15000, // Increased timeout
         socketTimeoutMS: 45000,
         maxPoolSize: 1, // Important for serverless - limit connections
         minPoolSize: 0,
         maxIdleTimeMS: 30000,
         family: 4, // Force IPv4 - helps with serverless DNS issues
+        dbName: 'movie-night', // Explicitly set database name
       });
 
       console.log('MongoDB connected successfully');
@@ -172,7 +182,7 @@ app.get('/api/', (req, res) => {
 app.get('/api/debug/connection', async (req, res) => {
   const uri = MONGODB_URI || '';
   const startTime = Date.now();
-  
+
   try {
     await connectDB();
     const elapsed = Date.now() - startTime;
