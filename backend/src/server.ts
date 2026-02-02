@@ -16,10 +16,18 @@ app.use(express.json());
 // MongoDB connection
 const MONGODB_URI = process.env.MONGODB_URI || '';
 
+// Ensure connection uses 'test' database
+let uri = MONGODB_URI;
+if (uri.includes('mongodb.net/?') || uri.includes('mongodb.net?')) {
+  uri = uri.replace('mongodb.net/?', 'mongodb.net/test?').replace('mongodb.net?', 'mongodb.net/test?');
+} else if (uri.includes('mongodb.net/movie-night')) {
+  uri = uri.replace('mongodb.net/movie-night', 'mongodb.net/test');
+}
+
 mongoose
-  .connect(MONGODB_URI)
+  .connect(uri, { dbName: 'test' })
   .then(() => {
-    console.log('Connected to MongoDB');
+    console.log('Connected to MongoDB (test database)');
   })
   .catch((error) => {
     console.error('MongoDB connection error:', error);

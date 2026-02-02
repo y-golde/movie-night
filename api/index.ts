@@ -48,12 +48,16 @@ const connectDB = async (): Promise<typeof mongoose> => {
       console.log('Attempting MongoDB connection...');
       console.log('URI starts with:', MONGODB_URI.substring(0, 20));
 
-      // Ensure database name is in URI - fix if missing
+      // Ensure database name is in URI - use 'test' database
       let uri = MONGODB_URI;
-      // If URI doesn't have database name, add it
+      // If URI doesn't have database name, add 'test'
       if (uri.includes('mongodb.net/?') || uri.includes('mongodb.net?')) {
-        uri = uri.replace('mongodb.net/?', 'mongodb.net/movie-night?').replace('mongodb.net?', 'mongodb.net/movie-night?');
-        console.log('Fixed URI: Added database name');
+        uri = uri.replace('mongodb.net/?', 'mongodb.net/test?').replace('mongodb.net?', 'mongodb.net/test?');
+        console.log('Fixed URI: Added database name "test"');
+      } else if (uri.includes('mongodb.net/movie-night')) {
+        // Replace movie-night with test if present
+        uri = uri.replace('mongodb.net/movie-night', 'mongodb.net/test');
+        console.log('Fixed URI: Changed database name to "test"');
       }
       
       await mongoose.connect(uri, {
@@ -63,7 +67,7 @@ const connectDB = async (): Promise<typeof mongoose> => {
         minPoolSize: 0,
         maxIdleTimeMS: 30000,
         family: 4, // Force IPv4 - helps with serverless DNS issues
-        dbName: 'movie-night', // Explicitly set database name (backup)
+        dbName: 'test', // Explicitly set database name to 'test'
       });
 
       console.log('MongoDB connected successfully');
