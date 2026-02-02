@@ -26,7 +26,7 @@ let cachedConnection: typeof mongoose | null = null;
 const connectDB = async (): Promise<typeof mongoose> => {
   // readyState: 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
   const readyState = mongoose.connection.readyState as number;
-  
+
   if (cachedConnection && readyState === 1) {
     return cachedConnection;
   }
@@ -92,7 +92,7 @@ app.use(async (req, res, next) => {
       return res.status(503).json({
         error: 'Database connection failed',
         message: error.message || 'Unable to connect to database'
-      });
+      })
     }
   }
   next();
