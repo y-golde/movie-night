@@ -50,16 +50,21 @@ const connectDB = async (): Promise<typeof mongoose> => {
 
       // Ensure database name is in URI - use 'test' database
       let uri = MONGODB_URI;
-      // If URI doesn't have database name, add 'test'
-      if (uri.includes('mongodb.net/?') || uri.includes('mongodb.net?')) {
-        uri = uri.replace('mongodb.net/?', 'mongodb.net/test?').replace('mongodb.net?', 'mongodb.net/test?');
+      // If URI doesn't have database name (ends with .net/? or .net?), add 'test'
+      if (uri.match(/mongodb\+srv:\/\/[^@]+@[^/]+\/\?/)) {
+        // Pattern: mongodb+srv://user:pass@host.net/?
+        uri = uri.replace(/mongodb\+srv:\/\/([^@]+@[^/]+)\/\?/, 'mongodb+srv://$1/test?');
         console.log('Fixed URI: Added database name "test"');
-      } else if (uri.includes('mongodb.net/movie-night')) {
+      } else if (uri.match(/mongodb\+srv:\/\/[^@]+@[^/]+\?/)) {
+        // Pattern: mongodb+srv://user:pass@host.net?
+        uri = uri.replace(/mongodb\+srv:\/\/([^@]+@[^/]+)\?/, 'mongodb+srv://$1/test?');
+        console.log('Fixed URI: Added database name "test"');
+      } else if (uri.includes('mongodb.net/movie-night') || uri.includes('mongodb.net/movie-night/')) {
         // Replace movie-night with test if present
-        uri = uri.replace('mongodb.net/movie-night', 'mongodb.net/test');
+        uri = uri.replace(/mongodb\.net\/movie-night(\/|\?)/g, 'mongodb.net/test$1');
         console.log('Fixed URI: Changed database name to "test"');
       }
-      
+
       await mongoose.connect(uri, {
         serverSelectionTimeoutMS: 15000, // Increased timeout
         socketTimeoutMS: 45000,
