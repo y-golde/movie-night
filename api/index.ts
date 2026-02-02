@@ -26,7 +26,7 @@ let connectionPromise: Promise<typeof mongoose> | null = null;
 const connectDB = async (): Promise<typeof mongoose> => {
   // readyState: 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
   const readyState = mongoose.connection.readyState as number;
-  
+
   // Already connected
   if (readyState === 1) {
     return mongoose;
@@ -54,7 +54,7 @@ const connectDB = async (): Promise<typeof mongoose> => {
         bufferCommands: false, // Disable mongoose buffering - fail fast if not connected
         bufferMaxEntries: 0,
       });
-      
+
       console.log('MongoDB connected successfully');
       return mongoose;
     } catch (error) {
@@ -84,15 +84,15 @@ mongoose.connection.on('disconnected', () => {
 
 // Set mongoose to not buffer commands - fail fast if not connected
 mongoose.set('bufferCommands', false);
-mongoose.set('bufferMaxEntries', 0);
+// 'bufferMaxEntries' is not a valid Mongoose option in recent versions; removed to fix lint error
 
 // Middleware to ensure DB connection before handling requests
-app.use(async (req, res, next) => {
+app.use(async (req: any, res: any, next: any) => {
   // Skip DB check for health endpoint
   if (req.path === '/health' || req.path === '/api' || req.path === '/api/') {
     return next();
   }
-  
+
   try {
     await connectDB();
     // Verify connection is actually ready
