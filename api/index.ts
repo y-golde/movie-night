@@ -1,9 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-// IMPORTANT: Import mongoose from backend to use the SAME instance as routes
-// This ensures the connection is shared with all models
-import mongoose from '../backend/node_modules/mongoose';
+import mongoose from 'mongoose';
 
 dotenv.config();
 
@@ -84,7 +82,7 @@ mongoose.connection.on('connected', () => {
   console.log('MongoDB connected');
 });
 
-mongoose.connection.on('error', (err) => {
+mongoose.connection.on('error', (err: Error) => {
   console.error('MongoDB connection error:', err);
   connectionPromise = null;
 });
