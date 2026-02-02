@@ -1,7 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
+// Import shared db connection from backend - ensures same mongoose instance
+import connectDB, { mongoose } from '../backend/src/db';
 
 dotenv.config();
 
@@ -17,94 +18,6 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
-
-// MongoDB connection - handle serverless properly
-const MONGODB_URI = process.env.MONGODB_URI || '';
-
-let connectionPromise: Promise<typeof mongoose> | null = null;
-
-const connectDB = async (): Promise<typeof mongoose> => {
-  // readyState: 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
-  const readyState = mongoose.connection.readyState as number;
-
-  // Already connected
-  if (readyState === 1) {
-    return mongoose;
-  }
-
-  if (!MONGODB_URI) {
-    throw new Error('MONGODB_URI is not set');
-  }
-
-  // If already connecting, return the existing promise
-  if (readyState === 2 && connectionPromise) {
-    return connectionPromise;
-  }
-
-  // Create new connection promise
-  connectionPromise = (async () => {
-    try {
-      // Connect with options optimized for serverless
-      console.log('Attempting MongoDB connection...');
-      console.log('URI starts with:', MONGODB_URI.substring(0, 20));
-
-      // Ensure database name is in URI - use 'test' database
-      let uri = MONGODB_URI;
-      // If URI doesn't have database name (ends with .net/? or .net?), add 'test'
-      if (uri.match(/mongodb\+srv:\/\/[^@]+@[^/]+\/\?/)) {
-        // Pattern: mongodb+srv://user:pass@host.net/?
-        uri = uri.replace(/mongodb\+srv:\/\/([^@]+@[^/]+)\/\?/, 'mongodb+srv://$1/test?');
-        console.log('Fixed URI: Added database name "test"');
-      } else if (uri.match(/mongodb\+srv:\/\/[^@]+@[^/]+\?/)) {
-        // Pattern: mongodb+srv://user:pass@host.net?
-        uri = uri.replace(/mongodb\+srv:\/\/([^@]+@[^/]+)\?/, 'mongodb+srv://$1/test?');
-        console.log('Fixed URI: Added database name "test"');
-      } else if (uri.includes('mongodb.net/movie-night') || uri.includes('mongodb.net/movie-night/')) {
-        // Replace movie-night with test if present
-        uri = uri.replace(/mongodb\.net\/movie-night(\/|\?)/g, 'mongodb.net/test$1');
-        console.log('Fixed URI: Changed database name to "test"');
-      }
-
-      await mongoose.connect(uri, {
-        serverSelectionTimeoutMS: 15000, // Increased timeout
-        socketTimeoutMS: 45000,
-        maxPoolSize: 1, // Important for serverless - limit connections
-        minPoolSize: 0,
-        maxIdleTimeMS: 30000,
-        family: 4, // Force IPv4 - helps with serverless DNS issues
-        dbName: 'test', // Explicitly set database name to 'test'
-      });
-
-      console.log('MongoDB connected successfully');
-      return mongoose;
-    } catch (error) {
-      console.error('MongoDB connection error:', error);
-      connectionPromise = null;
-      throw error;
-    }
-  })();
-
-  return connectionPromise;
-};
-
-// Handle connection events
-mongoose.connection.on('connected', () => {
-  console.log('MongoDB connected');
-});
-
-mongoose.connection.on('error', (err: Error) => {
-  console.error('MongoDB connection error:', err);
-  connectionPromise = null;
-});
-
-mongoose.connection.on('disconnected', () => {
-  console.log('MongoDB disconnected');
-  connectionPromise = null;
-});
-
-// Set mongoose to not buffer commands - fail fast if not connected
-mongoose.set('bufferCommands', false);
-// 'bufferMaxEntries' is not a valid Mongoose option in recent versions; removed to fix lint error
 
 // Middleware to ensure DB connection before handling requests
 app.use(async (req: any, res: any, next: any) => {
@@ -140,7 +53,8 @@ app.get('/health', async (req, res) => {
     res.json({
       status: 'ok',
       timestamp: new Date().toISOString(),
-      mongoConnected: (mongoose.connection.readyState as number) === 1
+      mongoConnected: (mongoose.connection.readyState as number) === 1,
+      dbName: mongoose.connection.name
     });
   } catch (error: any) {
     res.status(503).json({
@@ -152,43 +66,37 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// Root endpoint for debugging - handle both /api and /api/
-app.get('/api', (req, res) => {
-  const uri = MONGODB_URI || '';
+// Root endpoint for debugging
+app.get('/api', async (req, res) => {
+  const uri = process.env.MONGODB_URI || '';
   res.json({
     status: 'ok',
     message: 'API is running',
     timestamp: new Date().toISOString(),
     mongoConnected: (mongoose.connection.readyState as number) === 1,
     readyState: mongoose.connection.readyState,
+    dbName: mongoose.connection.name,
     path: req.path,
     url: req.url,
-    // Debug info (masked)
-    mongoUriSet: !!MONGODB_URI,
+    mongoUriSet: !!uri,
     mongoUriLength: uri.length,
-    mongoUriStart: uri.substring(0, 20) + '...',
-    envKeys: Object.keys(process.env).filter(k => k.includes('MONGO') || k.includes('VERCEL')),
   });
 });
 
-app.get('/api/', (req, res) => {
-  const uri = MONGODB_URI || '';
+app.get('/api/', async (req, res) => {
   res.json({
     status: 'ok',
     message: 'API is running',
     timestamp: new Date().toISOString(),
     mongoConnected: (mongoose.connection.readyState as number) === 1,
     readyState: mongoose.connection.readyState,
-    path: req.path,
-    url: req.url,
-    mongoUriSet: !!MONGODB_URI,
-    mongoUriLength: uri.length,
+    dbName: mongoose.connection.name,
   });
 });
 
 // Debug endpoint to test connection
 app.get('/api/debug/connection', async (req, res) => {
-  const uri = MONGODB_URI || '';
+  const uri = process.env.MONGODB_URI || '';
   const startTime = Date.now();
 
   try {
@@ -208,9 +116,8 @@ app.get('/api/debug/connection', async (req, res) => {
       elapsed: `${elapsed}ms`,
       error: error.message,
       readyState: mongoose.connection.readyState,
-      mongoUriSet: !!MONGODB_URI,
+      mongoUriSet: !!uri,
       mongoUriLength: uri.length,
-      mongoUriStart: uri.substring(0, 30) + '...',
     });
   }
 });
