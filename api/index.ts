@@ -24,7 +24,8 @@ const MONGODB_URI = process.env.MONGODB_URI || '';
 let cachedConnection: typeof mongoose | null = null;
 
 const connectDB = async (): Promise<typeof mongoose> => {
-  if (cachedConnection && mongoose.connection.readyState === mongoose.ConnectionStates.connected) {
+  // readyState: 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
+  if (cachedConnection && mongoose.connection.readyState === 1) {
     return cachedConnection;
   }
 
@@ -33,12 +34,12 @@ const connectDB = async (): Promise<typeof mongoose> => {
   }
 
   // If already connecting, wait for it
-  if (mongoose.connection.readyState === mongoose.ConnectionStates.connecting) {
+  if (mongoose.connection.readyState === 2) {
     await new Promise((resolve) => {
       mongoose.connection.once('connected', resolve);
       mongoose.connection.once('error', resolve);
     });
-    if (mongoose.connection.readyState === mongoose.ConnectionStates.connected) {
+    if (mongoose.connection.readyState === 1) {
       cachedConnection = mongoose;
       return mongoose;
     }
@@ -102,7 +103,7 @@ app.get('/health', async (req, res) => {
     res.json({ 
       status: 'ok', 
       timestamp: new Date().toISOString(),
-      mongoConnected: mongoose.connection.readyState === mongoose.ConnectionStates.connected
+      mongoConnected: mongoose.connection.readyState === 1
     });
   } catch (error: any) {
     res.status(503).json({ 
@@ -120,7 +121,7 @@ app.get('/api', (req, res) => {
     status: 'ok', 
     message: 'API is running',
     timestamp: new Date().toISOString(),
-    mongoConnected: mongoose.connection.readyState === mongoose.ConnectionStates.connected,
+    mongoConnected: mongoose.connection.readyState === 1,
     path: req.path,
     url: req.url
   });
@@ -131,7 +132,7 @@ app.get('/api/', (req, res) => {
     status: 'ok', 
     message: 'API is running',
     timestamp: new Date().toISOString(),
-    mongoConnected: mongoose.connection.readyState === mongoose.ConnectionStates.connected,
+    mongoConnected: mongoose.connection.readyState === 1,
     path: req.path,
     url: req.url
   });
