@@ -4,10 +4,10 @@ let connectionPromise: Promise<typeof mongoose> | null = null;
 
 export const connectDB = async (): Promise<typeof mongoose> => {
   const MONGODB_URI = process.env.MONGODB_URI || '';
-  
+
   // readyState: 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
   const readyState = mongoose.connection.readyState as number;
-  
+
   // Already connected
   if (readyState === 1) {
     return mongoose;
@@ -35,10 +35,10 @@ export const connectDB = async (): Promise<typeof mongoose> => {
         uri = uri.replace(/mongodb\+srv:\/\/([^@]+@[^/]+)\?/, 'mongodb+srv://$1/test?');
         console.log('Fixed URI: Added database name "test"');
       }
-      
+
       console.log('Connecting to MongoDB...');
       console.log('URI starts with:', uri.substring(0, 30));
-      
+
       await mongoose.connect(uri, {
         serverSelectionTimeoutMS: 15000,
         socketTimeoutMS: 45000,
