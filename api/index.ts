@@ -39,13 +39,26 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Root endpoint for debugging
-app.get('/', (req, res) => {
+// Root endpoint for debugging - handle both /api and /api/
+app.get('/api', (req, res) => {
   res.json({ 
     status: 'ok', 
     message: 'API is running',
     timestamp: new Date().toISOString(),
-    mongoConnected: mongoose.connection.readyState === 1
+    mongoConnected: mongoose.connection.readyState === 1,
+    path: req.path,
+    url: req.url
+  });
+});
+
+app.get('/api/', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'API is running',
+    timestamp: new Date().toISOString(),
+    mongoConnected: mongoose.connection.readyState === 1,
+    path: req.path,
+    url: req.url
   });
 });
 
@@ -60,17 +73,17 @@ import adminRoutes from '../backend/src/routes/admin';
 import movieHistoryRoutes from '../backend/src/routes/movieHistory';
 import freeEveningRoutes from '../backend/src/routes/freeEvenings';
 
-// Vercel rewrites /api/* to /api, so we mount routes without /api prefix
-// The rewrite handles adding /api back
-app.use('/auth', authRoutes);
-app.use('/movies', movieRoutes);
-app.use('/cycles', cycleRoutes);
-app.use('/votes', voteRoutes);
-app.use('/reviews', reviewRoutes);
-app.use('/items', itemRoutes);
-app.use('/admin', adminRoutes);
-app.use('/movie-history', movieHistoryRoutes);
-app.use('/free-evenings', freeEveningRoutes);
+// Vercel sends all /api/* requests to this function
+// The request path includes /api, so we mount routes with /api prefix
+app.use('/api/auth', authRoutes);
+app.use('/api/movies', movieRoutes);
+app.use('/api/cycles', cycleRoutes);
+app.use('/api/votes', voteRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/items', itemRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/movie-history', movieHistoryRoutes);
+app.use('/api/free-evenings', freeEveningRoutes);
 
 // Export for Vercel serverless
 export default app;
