@@ -51,8 +51,6 @@ const connectDB = async (): Promise<typeof mongoose> => {
         maxPoolSize: 1, // Important for serverless - limit connections
         minPoolSize: 0,
         maxIdleTimeMS: 30000,
-        bufferCommands: false, // Disable mongoose buffering - fail fast if not connected
-        bufferMaxEntries: 0,
       });
 
       console.log('MongoDB connected successfully');
