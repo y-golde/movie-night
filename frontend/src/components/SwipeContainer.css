@@ -1,0 +1,64 @@
+.swipe-container {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  height: 750px;
+}
+
+.swipe-card {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 6px solid #000;
+  background: #fff;
+  transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+  cursor: grab;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.2);
+}
+
+.swipe-card:active {
+  cursor: grabbing;
+  transition: transform 0.1s ease-out;
+}
+
+.swipe-hints {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: 10;
+  padding: 0 1rem;
+}
+
+.swipe-hint {
+  padding: 1rem 1.5rem;
+  border: 4px solid #000;
+  background: rgba(255, 255, 255, 0.95);
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 0.3s;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.3);
+}
+
+.swipe-hint.left {
+  transform: rotate(-12deg);
+  color: #d32f2f;
+  border-color: #d32f2f;
+}
+
+.swipe-hint.right {
+  transform: rotate(12deg);
+  color: #388e3c;
+  border-color: #388e3c;
+}

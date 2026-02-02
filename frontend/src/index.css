@@ -1,0 +1,57 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Courier New', monospace;
+  background: #fff;
+  color: #000;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+}
+
+input,
+textarea {
+  font-family: inherit;
+  color: #000;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #666;
+  opacity: 1;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Mobile Responsive Base Styles */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  a,
+  input,
+  textarea {
+    min-height: 44px; /* Minimum touch target size */
+  }
+}

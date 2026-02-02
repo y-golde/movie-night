@@ -1,0 +1,263 @@
+.avatar-creator {
+  border: 6px solid #000;
+  background: #fff;
+  padding: 1.5rem;
+  max-width: 600px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.avatar-creator-header {
+  border-bottom: 4px solid #000;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.avatar-creator-header h2 {
+  font-family: 'Courier New', monospace;
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin: 0;
+  text-align: center;
+}
+
+.avatar-creator-content {
+  display: flex;
+  flex-direction: row;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+  align-items: flex-start;
+}
+
+/* Canvas section - on the RIGHT */
+.avatar-canvas-container {
+  border: 4px solid #000;
+  padding: 1rem;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.avatar-canvas {
+  border: 2px solid #000;
+  background: #fff;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  cursor: crosshair;
+  width: 192px;
+  height: 192px;
+  display: block;
+}
+
+/* Toolbar section - on the LEFT */
+.avatar-toolbar {
+  border: 4px solid #000;
+  padding: 1rem;
+  background: #fff;
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tool-group {
+  margin: 0;
+}
+
+.tool-group h3 {
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin: 0 0 0.5rem 0;
+  border-bottom: 2px solid #000;
+  padding-bottom: 0.25rem;
+}
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.tool-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 2px solid #000;
+  background: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tool-btn:hover {
+  background: #f0f0f0;
+}
+
+.tool-btn.active {
+  background: #000;
+  color: #fff;
+}
+
+.color-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.color-swatch {
+  width: 32px;
+  height: 32px;
+  border: 2px solid #000;
+  cursor: pointer;
+  transition: all 0.15s;
+  padding: 0;
+}
+
+.color-swatch:hover {
+  transform: scale(1.1);
+  z-index: 1;
+  position: relative;
+}
+
+.color-swatch.active {
+  border-width: 3px;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000;
+}
+
+.color-picker {
+  margin-top: 0.5rem;
+}
+
+.color-input {
+  width: 100%;
+  height: 40px;
+  border: 3px solid #000;
+  cursor: pointer;
+}
+
+.size-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.size-slider {
+  flex: 1;
+  margin: 0;
+}
+
+.size-value {
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  font-size: 0.75rem;
+  min-width: 30px;
+  text-align: right;
+}
+
+.action-btn {
+  padding: 0.5rem 1rem;
+  border: 3px solid #000;
+  background: #fff;
+  color: #000;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 100%;
+}
+
+.action-btn:hover {
+  background: #000;
+  color: #fff;
+}
+
+.action-btn.clear {
+  background: #fff;
+  border-color: #000;
+}
+
+.action-btn.clear:hover {
+  background: #f0f0f0;
+  color: #000;
+}
+
+.avatar-creator-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  border-top: 4px solid #000;
+  padding-top: 1rem;
+}
+
+.avatar-creator-actions .action-btn {
+  width: auto;
+  min-width: 100px;
+}
+
+.avatar-creator-actions .action-btn.cancel {
+  background: #fff;
+}
+
+.avatar-creator-actions .action-btn.cancel:hover {
+  background: #f0f0f0;
+  color: #000;
+}
+
+.avatar-creator-actions .action-btn.save {
+  background: #000;
+  color: #fff;
+}
+
+.avatar-creator-actions .action-btn.save:hover {
+  background: #333;
+}
+
+/* Mobile Responsive */
+@media (max-width: 550px) {
+  .avatar-creator {
+    padding: 1rem;
+    max-width: 100%;
+  }
+
+  .avatar-creator-header h2 {
+    font-size: 1.25rem;
+  }
+
+  .avatar-creator-content {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .avatar-canvas-container {
+    align-self: center;
+  }
+
+  .avatar-canvas {
+    width: 160px;
+    height: 160px;
+  }
+
+  .avatar-toolbar {
+    width: 100%;
+  }
+
+  .avatar-creator-actions {
+    flex-direction: column;
+  }
+
+  .avatar-creator-actions .action-btn {
+    width: 100%;
+  }
+}
