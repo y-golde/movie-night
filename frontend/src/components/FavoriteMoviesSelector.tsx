@@ -12,7 +12,6 @@ const FavoriteMoviesSelector = ({ selectedMovies, onMovieToggle }: FavoriteMovie
   const [searchResults, setSearchResults] = useState<MovieSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedMovieDetails, setSelectedMovieDetails] = useState<MovieSearchResult[]>([]);
-  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
   // Sync selectedMovieDetails with selectedMovies prop
   useEffect(() => {
@@ -25,7 +24,6 @@ const FavoriteMoviesSelector = ({ selectedMovies, onMovieToggle }: FavoriteMovie
         
         // Fetch missing movies asynchronously
         if (missingIds.length > 0) {
-          setIsLoadingDetails(true);
           (async () => {
             try {
               const movieDetails = await Promise.all(missingIds.map(id => getMovieDetails(id)));
@@ -58,8 +56,6 @@ const FavoriteMoviesSelector = ({ selectedMovies, onMovieToggle }: FavoriteMovie
               });
             } catch (error) {
               console.error('Error loading saved movies:', error);
-            } finally {
-              setIsLoadingDetails(false);
             }
           })();
         }

@@ -29,7 +29,6 @@ interface MovieHistory {
   location?: string;
   theme?: string;
   averageRating: number;
-  averageRating: number;
   ratings: Array<{
     userId: { username: string; _id?: string };
     movieId?: { _id: string; title?: string } | string;
@@ -57,19 +56,11 @@ interface Cycle {
   movies: Movie[];
 }
 
-interface UpcomingMeeting {
-  _id: string;
-  watchedDate: string;
-  location?: string;
-  movieIds: Movie[];
-}
-
 const Main = () => {
   const { user, logout } = useAuth();
   const [activeCycle, setActiveCycle] = useState<Cycle | null>(null);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [pastMeetings, setPastMeetings] = useState<MovieHistory[]>([]);
-  const [upcomingMeetings, setUpcomingMeetings] = useState<MovieHistory[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [movieRatings, setMovieRatings] = useState<Record<string, { rating: number; comment: string }>>({});
@@ -77,7 +68,6 @@ const Main = () => {
   const [hoveredStar, setHoveredStar] = useState<Record<string, number>>({});
   const [openTooltip, setOpenTooltip] = useState<string | null>(null);
   const [meetingCandidates, setMeetingCandidates] = useState<Record<string, any[]>>({});
-  const [meetingVotes, setMeetingVotes] = useState<Record<string, any[]>>({});
   const [myVotes, setMyVotes] = useState<Record<string, Record<string, { voteType: string; reason?: string }>>>({});
   const [votingMovieId, setVotingMovieId] = useState<{ meetingId: string; movieId: string } | null>(null);
   const [voteReason, setVoteReason] = useState('');
@@ -141,7 +131,8 @@ const Main = () => {
         // Calculate remaining unvoted candidates with updated votes
         const remainingUnvoted = candidates.filter((c: any) => {
           const cId = c._id || c;
-          return !updated[activeCycle._id]?.[cId];
+          const cycleVotes = updated[activeCycle._id] as Record<string, { voteType: string; reason?: string }> | undefined;
+          return !cycleVotes?.[cId];
         });
         
         // Update index: stay at same position (which now shows next candidate)
@@ -258,17 +249,17 @@ const Main = () => {
       setPastMeetings(past.sort((a: MovieHistory, b: MovieHistory) => 
         new Date(b.watchedDate).getTime() - new Date(a.watchedDate).getTime()
       ));
-      setUpcomingMeetings(upcoming.sort((a: MovieHistory, b: MovieHistory) => 
+      
+      const sortedUpcoming = upcoming.sort((a: MovieHistory, b: MovieHistory) => 
         new Date(a.watchedDate).getTime() - new Date(b.watchedDate).getTime()
-      ));
+      );
 
       // Fetch candidates and votes for upcoming meetings without movies
-      for (const meeting of upcoming) {
+      for (const meeting of sortedUpcoming) {
         if (!meeting.movieIds || meeting.movieIds.length === 0) {
           try {
             const candidatesData = await getCandidates(meeting._id);
             setMeetingCandidates(prev => ({ ...prev, [meeting._id]: candidatesData.candidates || [] }));
-            setMeetingVotes(prev => ({ ...prev, [meeting._id]: candidatesData.votes || [] }));
             
             const myVotesData = await getMyVotes(meeting._id);
             const votesMap: Record<string, { voteType: string; reason?: string }> = {};
@@ -294,7 +285,7 @@ const Main = () => {
       }
 
       // Find the next upcoming meeting
-      const nextUpcoming = upcoming.length > 0 ? upcoming[0] : null;
+      const nextUpcoming = sortedUpcoming.length > 0 ? sortedUpcoming[0] : null;
       
       if (nextUpcoming) {
         // Check if it has movies selected
@@ -375,13 +366,6 @@ const Main = () => {
     } catch (error: any) {
       alert(error.response?.data?.error || 'Failed to submit rating');
     }
-  };
-
-  const hasUserRatedMovie = (meeting: MovieHistory): boolean => {
-    if (!user) return false;
-    return meeting.ratings.some(r => 
-      r.userId.username === user.username || r.userId._id === user.id
-    );
   };
 
   const getUserMovieRating = (meeting: MovieHistory, movieId: string): { rating: number; comment: string } | null => {
@@ -537,7 +521,7 @@ const Main = () => {
                       setSearchResults([]);
                     }
                   }}
-                  disabled={activeCycle?._id && (mySuggestions[activeCycle._id]?.remaining || 0) === 0}
+                  disabled={!!(activeCycle?._id && (mySuggestions[activeCycle._id]?.remaining || 0) === 0)}
                 >
                   SUGGEST MOVIES {activeCycle?._id && mySuggestions[activeCycle._id]?.remaining !== undefined 
                     ? `(${mySuggestions[activeCycle._id].remaining} LEFT)` 

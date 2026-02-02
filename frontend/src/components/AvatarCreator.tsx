@@ -16,7 +16,7 @@ const AvatarCreator = ({ onSave, onCancel, initialAvatar }: AvatarCreatorProps) 
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPos, setStartPos] = useState<{ x: number; y: number } | null>(null);
   const [brushSize, setBrushSize] = useState(2);
-  const [sprayDensity, setSprayDensity] = useState(20);
+  const [sprayDensity] = useState(20);
   const canvasSnapshotRef = useRef<ImageData | null>(null);
 
   // 8-color palette

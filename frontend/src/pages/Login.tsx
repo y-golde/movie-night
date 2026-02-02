@@ -75,11 +75,6 @@ const Login = () => {
     setShowColorPicker(false);
   };
 
-  const handleCancelEditingDisplayName = () => {
-    setIsEditingDisplayName(false);
-    setShowColorPicker(false);
-  };
-
   const handleUsernameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim()) {

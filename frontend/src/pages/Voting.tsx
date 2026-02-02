@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth';
 import { useSwipe } from '../hooks/useSwipe';
 import SwipeContainer from '../components/SwipeContainer';
 import MovieCard from '../components/MovieCard';
@@ -19,7 +18,6 @@ interface Movie {
 }
 
 const Voting = () => {
-  const { user } = useAuth();
   const [activeCycle, setActiveCycle] = useState<any>(null);
   const [movies, setMovies] = useState<Movie[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -69,8 +67,8 @@ const Voting = () => {
         const allMovies = cycleData.movies || [];
         const votedMovieIds = new Set(Object.keys(voteMap));
         const unvotedMovies = allMovies.filter((movie: Movie) => {
-          const movieId = typeof movie._id === 'string' ? movie._id : movie._id?.toString();
-          return !votedMovieIds.has(movieId);
+          const movieId = typeof movie._id === 'string' ? movie._id : (movie._id ? String(movie._id) : '');
+          return movieId && !votedMovieIds.has(movieId);
         });
         setMovies(unvotedMovies);
         // Reset index if current movie was already voted on

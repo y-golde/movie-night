@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
 import './Social.css';
 
@@ -34,7 +33,6 @@ interface User {
 }
 
 const Social = () => {
-  const { user: currentUser } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
