@@ -21,79 +21,97 @@ app.use(express.json());
 // MongoDB connection - handle serverless properly
 const MONGODB_URI = process.env.MONGODB_URI || '';
 
-let isConnected = false;
+let cachedConnection: typeof mongoose | null = null;
 
-const connectDB = async () => {
-  if (isConnected) {
-    return;
+const connectDB = async (): Promise<typeof mongoose> => {
+  if (cachedConnection && mongoose.connection.readyState === 1) {
+    return cachedConnection;
   }
 
   if (!MONGODB_URI) {
-    console.warn('MONGODB_URI not set - database operations will fail');
-    return;
+    throw new Error('MONGODB_URI is not set');
+  }
+
+  // If already connecting, wait for it
+  if (mongoose.connection.readyState === 2) {
+    await new Promise((resolve) => {
+      mongoose.connection.once('connected', resolve);
+      mongoose.connection.once('error', resolve);
+    });
+    if (mongoose.connection.readyState === 1) {
+      cachedConnection = mongoose;
+      return mongoose;
+    }
   }
 
   try {
-    // Check if already connecting
-    if (mongoose.connection.readyState === 1) {
-      isConnected = true;
-      return;
-    }
-
-    // Connect with options for serverless
-    await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
-      socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
+    // Connect with options optimized for serverless
+    cachedConnection = await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      maxPoolSize: 1, // Important for serverless - limit connections
+      minPoolSize: 0,
+      maxIdleTimeMS: 30000,
     });
     
-    isConnected = true;
-    console.log('Connected to MongoDB');
+    console.log('MongoDB connected successfully');
+    return cachedConnection;
   } catch (error) {
     console.error('MongoDB connection error:', error);
-    isConnected = false;
+    cachedConnection = null;
     throw error;
   }
 };
 
 // Handle connection events
 mongoose.connection.on('connected', () => {
-  isConnected = true;
   console.log('MongoDB connected');
 });
 
 mongoose.connection.on('error', (err) => {
-  isConnected = false;
   console.error('MongoDB connection error:', err);
+  cachedConnection = null;
 });
 
 mongoose.connection.on('disconnected', () => {
-  isConnected = false;
   console.log('MongoDB disconnected');
+  cachedConnection = null;
 });
-
-// Connect on first request
-connectDB().catch(console.error);
 
 // Middleware to ensure DB connection before handling requests
 app.use(async (req, res, next) => {
-  if (!isConnected && mongoose.connection.readyState !== 1) {
-    try {
-      await connectDB();
-    } catch (error) {
-      console.error('Failed to connect to MongoDB:', error);
-      // Continue anyway - some endpoints might not need DB
+  try {
+    await connectDB();
+  } catch (error: any) {
+    console.error('Failed to connect to MongoDB:', error);
+    // Return error for API routes that need DB
+    if (req.path.startsWith('/api/')) {
+      return res.status(503).json({ 
+        error: 'Database connection failed', 
+        message: error.message || 'Unable to connect to database'
+      });
     }
   }
   next();
 });
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    mongoConnected: mongoose.connection.readyState === 1
-  });
+app.get('/health', async (req, res) => {
+  try {
+    await connectDB();
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      mongoConnected: mongoose.connection.readyState === 1
+    });
+  } catch (error: any) {
+    res.status(503).json({ 
+      status: 'error', 
+      timestamp: new Date().toISOString(),
+      mongoConnected: false,
+      error: error.message
+    });
+  }
 });
 
 // Root endpoint for debugging - handle both /api and /api/
