@@ -7,14 +7,13 @@ dotenv.config();
 
 const app = express();
 
-// Get frontend URL from environment or use Vercel's URL
-const FRONTEND_URL = process.env.FRONTEND_URL || process.env.VERCEL_URL 
-  ? `https://${process.env.VERCEL_URL}` 
-  : 'http://localhost:5173';
+// Get frontend URL from environment
+const FRONTEND_URL = process.env.FRONTEND_URL || 
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5173');
 
-// Middleware
+// Middleware - allow all origins in production for now (can restrict later)
 app.use(cors({ 
-  origin: process.env.FRONTEND_URL || FRONTEND_URL, 
+  origin: process.env.FRONTEND_URL || '*', 
   credentials: true 
 }));
 app.use(express.json());
@@ -31,11 +30,23 @@ if (MONGODB_URI) {
     .catch((error) => {
       console.error('MongoDB connection error:', error);
     });
+} else {
+  console.warn('MONGODB_URI not set - database operations will fail');
 }
 
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Root endpoint for debugging
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'API is running',
+    timestamp: new Date().toISOString(),
+    mongoConnected: mongoose.connection.readyState === 1
+  });
 });
 
 // Routes - Note: paths are relative to backend/src since that's where routes are
@@ -49,17 +60,17 @@ import adminRoutes from '../backend/src/routes/admin';
 import movieHistoryRoutes from '../backend/src/routes/movieHistory';
 import freeEveningRoutes from '../backend/src/routes/freeEvenings';
 
-// Note: Routes are already prefixed with /api in vercel.json rewrites
-// But the routes themselves expect /api prefix, so we keep it
-app.use('/api/auth', authRoutes);
-app.use('/api/movies', movieRoutes);
-app.use('/api/cycles', cycleRoutes);
-app.use('/api/votes', voteRoutes);
-app.use('/api/reviews', reviewRoutes);
-app.use('/api/items', itemRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/movie-history', movieHistoryRoutes);
-app.use('/api/free-evenings', freeEveningRoutes);
+// Vercel rewrites /api/* to /api, so we mount routes without /api prefix
+// The rewrite handles adding /api back
+app.use('/auth', authRoutes);
+app.use('/movies', movieRoutes);
+app.use('/cycles', cycleRoutes);
+app.use('/votes', voteRoutes);
+app.use('/reviews', reviewRoutes);
+app.use('/items', itemRoutes);
+app.use('/admin', adminRoutes);
+app.use('/movie-history', movieHistoryRoutes);
+app.use('/free-evenings', freeEveningRoutes);
 
 // Export for Vercel serverless
 export default app;
