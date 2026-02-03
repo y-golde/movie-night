@@ -33,6 +33,10 @@ api.interceptors.request.use((config) => {
     if (config.url?.includes('/movie-history') && config.method && ['post', 'delete'].includes(config.method.toLowerCase())) {
       config.headers['x-admin-password'] = adminPassword;
     }
+    // Add for items routes (POST and DELETE) - for admin access
+    if (config.url?.includes('/items') && config.method && ['post', 'delete'].includes(config.method.toLowerCase())) {
+      config.headers['x-admin-password'] = adminPassword;
+    }
   }
   
   // Remove Authorization header if no token (for admin routes that don't require auth)

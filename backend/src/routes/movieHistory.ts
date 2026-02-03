@@ -21,7 +21,7 @@ const router = express.Router();
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const history = await MovieHistory.find()
-      .populate('movieIds', 'title poster')
+      .populate('movieIds', 'title poster trailer')
       .populate('candidates', 'title poster')
       .populate('hostId', 'username displayName displayNameColor avatar')
       .populate('ratings.userId', 'username displayName displayNameColor avatar')

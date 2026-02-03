@@ -54,6 +54,10 @@ const Admin = () => {
   const [votesModal, setVotesModal] = useState<{ movieTitle: string; moviePoster?: string; votes: any[] } | null>(null);
   const [carouselIndex, setCarouselIndex] = useState<Record<string, number>>({});
   const [meetingVotes, setMeetingVotes] = useState<Record<string, any[]>>({});
+  const [meetingItems, setMeetingItems] = useState<Record<string, any[]>>({});
+  const [newItemNames, setNewItemNames] = useState<Record<string, string>>({});
+  const [showAddItem, setShowAddItem] = useState<Record<string, boolean>>({});
+  const [isAddingItem, setIsAddingItem] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     // Ensure user is logged in
@@ -95,6 +99,7 @@ const Admin = () => {
       
       // Fetch votes for each meeting
       const votesMap: Record<string, any[]> = {};
+      const itemsMap: Record<string, any[]> = {};
       for (const meeting of meetingsData) {
         if (meeting.candidates && meeting.candidates.length > 0) {
           try {
@@ -105,8 +110,23 @@ const Admin = () => {
             votesMap[meeting._id] = [];
           }
         }
+        
+        // Fetch items for upcoming meetings
+        const isUpcoming = meeting.status === 'upcoming' || new Date(meeting.watchedDate) > new Date();
+        if (isUpcoming) {
+          try {
+            const itemsResponse = await api.get(`/items/event/${meeting._id}`);
+            itemsMap[meeting._id] = itemsResponse.data || [];
+          } catch (error: any) {
+            if (error.response?.status !== 404) {
+              console.error(`Failed to fetch items for meeting ${meeting._id}:`, error);
+            }
+            itemsMap[meeting._id] = [];
+          }
+        }
       }
       setMeetingVotes(votesMap);
+      setMeetingItems(itemsMap);
     } catch (error) {
       console.error('Failed to fetch meetings:', error);
     }
@@ -328,6 +348,37 @@ const Admin = () => {
       alert('Movie unselected successfully!');
     } catch (error: any) {
       alert(error.response?.data?.error || 'Failed to unselect movie');
+    }
+  };
+
+  const handleAddItemToMeeting = async (meetingId: string) => {
+    const itemName = newItemNames[meetingId];
+    if (!itemName?.trim()) return;
+    
+    setIsAddingItem({ ...isAddingItem, [meetingId]: true });
+    try {
+      await api.post('/items', {
+        eventId: meetingId,
+        name: itemName.trim(),
+      });
+      setNewItemNames({ ...newItemNames, [meetingId]: '' });
+      setShowAddItem({ ...showAddItem, [meetingId]: false });
+      await fetchMeetings();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to add item');
+    } finally {
+      setIsAddingItem({ ...isAddingItem, [meetingId]: false });
+    }
+  };
+
+  const handleDeleteItemFromMeeting = async (meetingId: string, itemId: string) => {
+    if (!confirm('Are you sure you want to delete this item?')) return;
+    
+    try {
+      await api.delete(`/items/${itemId}`);
+      await fetchMeetings();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to delete item');
     }
   };
 
@@ -642,6 +693,76 @@ const Admin = () => {
                           </div>
                         </div>
                       </div>
+                      
+                      {/* Bring List Section for upcoming meetings */}
+                      {isUpcoming && (
+                        <div className="bring-list-section-admin">
+                          <div className="bring-list-header-admin">
+                            <h4 className="bring-list-title-admin">BRING LIST</h4>
+                            <button
+                              className="add-item-btn-admin"
+                              onClick={() => setShowAddItem({ ...showAddItem, [meeting._id]: !showAddItem[meeting._id] })}
+                            >
+                              {showAddItem[meeting._id] ? 'CANCEL' : '+ ADD ITEM'}
+                            </button>
+                          </div>
+                          
+                          {showAddItem[meeting._id] && (
+                            <div className="add-item-form-admin">
+                              <input
+                                type="text"
+                                value={newItemNames[meeting._id] || ''}
+                                onChange={(e) => setNewItemNames({ ...newItemNames, [meeting._id]: e.target.value })}
+                                onKeyPress={(e) => e.key === 'Enter' && handleAddItemToMeeting(meeting._id)}
+                                placeholder="e.g., Chips, Soda, Popcorn..."
+                                className="add-item-input-admin"
+                                disabled={isAddingItem[meeting._id]}
+                              />
+                              <button
+                                onClick={() => handleAddItemToMeeting(meeting._id)}
+                                disabled={!newItemNames[meeting._id]?.trim() || isAddingItem[meeting._id]}
+                                className="submit-item-btn-admin"
+                              >
+                                {isAddingItem[meeting._id] ? 'ADDING...' : 'ADD'}
+                              </button>
+                            </div>
+                          )}
+                          
+                          {meetingItems[meeting._id] && meetingItems[meeting._id].length > 0 ? (
+                            <div className="items-list-admin">
+                              {meetingItems[meeting._id].map((item: any) => (
+                                <div key={item._id} className="item-card-admin">
+                                  <span className="item-name-admin">{item.name.toUpperCase()}</span>
+                                  <div className="item-actions-admin">
+                                    {item.status === 'claimed' && item.claimedBy ? (
+                                      <span 
+                                        className="item-claimed-admin"
+                                        style={{ 
+                                          color: item.claimedBy.displayNameColor || '#000',
+                                          fontWeight: 'bold'
+                                        }}
+                                      >
+                                        {item.claimedBy.displayName || item.claimedBy.username}
+                                      </span>
+                                    ) : (
+                                      <span className="item-available-admin">AVAILABLE</span>
+                                    )}
+                                    <button
+                                      onClick={() => handleDeleteItemFromMeeting(meeting._id, item._id)}
+                                      className="delete-item-btn-admin"
+                                      title="Delete item"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="no-items-message-admin">No items yet. Add items to bring.</p>
+                          )}
+                        </div>
+                      )}
                       
                       {/* Candidates Section for meetings without movies */}
                       {isUpcoming && (!meeting.movieIds || meeting.movieIds.length === 0) && (

@@ -26,6 +26,13 @@ interface MovieHistory {
     poster?: string;
   }>;
   watchedDate: string;
+  hostId?: {
+    _id: string;
+    username?: string;
+    displayName?: string;
+    displayNameColor?: string;
+    avatar?: string;
+  } | string;
   location?: string;
   theme?: string;
   averageRating: number;
@@ -41,7 +48,12 @@ interface MovieHistory {
 interface Item {
   _id: string;
   name: string;
-  claimedBy?: { username: string };
+  claimedBy?: { 
+    username: string;
+    displayName?: string;
+    displayNameColor?: string;
+    avatar?: string;
+  };
   status: string;
 }
 
@@ -82,6 +94,10 @@ const Main = () => {
   const [mySuggestions, setMySuggestions] = useState<Record<string, { count: number; remaining: number }>>({});
   const [freeEveningsData, setFreeEveningsData] = useState<any>(null);
   const [myFreeEveningDates, setMyFreeEveningDates] = useState<Set<string>>(new Set());
+  const [newItemName, setNewItemName] = useState('');
+  const [showAddItem, setShowAddItem] = useState(false);
+  const [isAddingItem, setIsAddingItem] = useState(false);
+  const [nextUpcomingMeeting, setNextUpcomingMeeting] = useState<MovieHistory | null>(null);
 
   const handleSwipeLeft = () => {
     if (showTinderInterface) {
@@ -286,6 +302,7 @@ const Main = () => {
 
       // Find the next upcoming meeting
       const nextUpcoming = sortedUpcoming.length > 0 ? sortedUpcoming[0] : null;
+      setNextUpcomingMeeting(nextUpcoming);
       
       if (nextUpcoming) {
         // Check if it has movies selected
@@ -321,10 +338,10 @@ const Main = () => {
       }
 
       // Get items for upcoming event if there's a meeting time (optional - don't fail if endpoint doesn't exist)
-      if (nextUpcoming?.watchedDate) {
+      if (nextUpcoming?._id) {
         try {
-          const itemsResponse = await api.get('/items');
-          setItems(itemsResponse.data.filter((item: Item) => item.status === 'available'));
+          const itemsResponse = await api.get(`/items/event/${nextUpcoming._id}`);
+          setItems(itemsResponse.data);
         } catch (error: any) {
           // Items endpoint is optional - only log if it's not a 404
           if (error.response?.status !== 404) {
@@ -332,6 +349,8 @@ const Main = () => {
           }
           setItems([]);
         }
+      } else {
+        setItems([]);
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -346,6 +365,46 @@ const Main = () => {
       fetchData();
     } catch (error: any) {
       alert(error.response?.data?.error || 'Failed to claim item');
+    }
+  };
+
+  const handleAddItem = async () => {
+    if (!newItemName.trim() || !activeCycle?._id) return;
+    
+    setIsAddingItem(true);
+    try {
+      await api.post('/items', {
+        eventId: activeCycle._id,
+        name: newItemName.trim(),
+      });
+      setNewItemName('');
+      setShowAddItem(false);
+      fetchData();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to add item');
+    } finally {
+      setIsAddingItem(false);
+    }
+  };
+
+  const handleFreeItem = async (itemId: string) => {
+    try {
+      // Call the claim endpoint - if item is claimed, it will unclaim it
+      await api.put(`/items/${itemId}/claim`);
+      fetchData();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to free up item');
+    }
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    if (!confirm('Are you sure you want to delete this item?')) return;
+    
+    try {
+      await api.delete(`/items/${itemId}`);
+      fetchData();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to delete item');
     }
   };
 
@@ -440,7 +499,7 @@ const Main = () => {
         <h1>MOVIE NIGHT</h1>
         <div className="header-actions">
           <Link to="/social" className="nav-link">SOCIAL</Link>
-          <Link to="/profile" className="nav-link">EDIT</Link>
+          <Link to="/profile" className="nav-link">YOU</Link>
           <div className="user-info-header">
             {user?.avatar && (
               <img src={user.avatar} alt={user?.displayName || user?.username} className="header-avatar" />
@@ -669,7 +728,26 @@ const Main = () => {
                       )}
                       <h4>{movie.title.toUpperCase()}</h4>
                       {movie._id === selectedMovie._id && (
-                        <span className="selected-badge">SELECTED</span>
+                        <>
+                          <span className="selected-badge">SELECTED</span>
+                          <a
+                            href={movie.trailer || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="trailer-link"
+                            onClick={(e) => {
+                              if (!movie.trailer) {
+                                e.preventDefault();
+                              }
+                            }}
+                            style={{ 
+                              opacity: movie.trailer ? 1 : 0.5,
+                              cursor: movie.trailer ? 'pointer' : 'not-allowed'
+                            }}
+                          >
+                            TRAILER
+                          </a>
+                        </>
                       )}
                     </div>
                   ))}
@@ -724,29 +802,121 @@ const Main = () => {
                 )}
               </div>
               
-              {/* Items to bring */}
-              {items.length > 0 && (
-                <div className="items-section-present">
-                  <h4>ITEMS TO BRING</h4>
-                  <div className="items-list-present">
-                    {items.map((item) => (
-                      <div key={item._id} className="item-card-present">
-                        <span className="item-name">{item.name.toUpperCase()}</span>
-                        {item.status === 'claimed' && item.claimedBy ? (
-                          <span className="item-claimed">Claimed by {item.claimedBy.username}</span>
-                        ) : (
-                          <button
-                            onClick={() => handleClaimItem(item._id)}
-                            className="claim-button"
-                          >
-                            CLAIM
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+              {/* Bring List */}
+              <div className="items-section-present">
+                <div className="items-header">
+                  <h4>BRING LIST</h4>
+                  {nextUpcomingMeeting && user && (() => {
+                    const hostId = nextUpcomingMeeting.hostId 
+                      ? (typeof nextUpcomingMeeting.hostId === 'object' 
+                          ? String(nextUpcomingMeeting.hostId._id || '')
+                          : String(nextUpcomingMeeting.hostId))
+                      : '';
+                    return hostId === user.id && (
+                      <button
+                        onClick={() => setShowAddItem(!showAddItem)}
+                        className="add-item-btn"
+                      >
+                        {showAddItem ? 'CANCEL' : '+ ADD ITEM'}
+                      </button>
+                    );
+                  })()}
                 </div>
-              )}
+                
+                {showAddItem && (
+                  <div className="add-item-form">
+                    <input
+                      type="text"
+                      value={newItemName}
+                      onChange={(e) => setNewItemName(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleAddItem()}
+                      placeholder="e.g., Chips, Soda, Popcorn..."
+                      className="add-item-input"
+                      disabled={isAddingItem}
+                    />
+                    <button
+                      onClick={handleAddItem}
+                      disabled={!newItemName.trim() || isAddingItem}
+                      className="submit-item-btn"
+                    >
+                      {isAddingItem ? 'ADDING...' : 'ADD'}
+                    </button>
+                  </div>
+                )}
+                
+                {items.length > 0 ? (
+                  <div className="items-list-present">
+                    {items.map((item) => {
+                      const claimedById = item.claimedBy && typeof item.claimedBy === 'object' 
+                        ? String((item.claimedBy as any)._id || '')
+                        : String(item.claimedBy || '');
+                      const isClaimedByMe = item.claimedBy && user && (
+                        item.claimedBy.username === user.username || 
+                        claimedById === user.id
+                      );
+                      const hostId = nextUpcomingMeeting?.hostId 
+                        ? (typeof nextUpcomingMeeting.hostId === 'object' 
+                            ? String(nextUpcomingMeeting.hostId._id || '')
+                            : String(nextUpcomingMeeting.hostId))
+                        : '';
+                      const isHost = nextUpcomingMeeting && user && hostId === user.id;
+                      
+                      return (
+                        <div key={item._id} className={`item-card-present ${item.status === 'claimed' ? 'claimed' : ''}`}>
+                          <span className="item-name">{item.name.toUpperCase()}</span>
+                          <div className="item-actions">
+                            {item.status === 'claimed' && item.claimedBy ? (
+                              <div className="item-claimed-wrapper">
+                                {item.claimedBy.avatar ? (
+                                  <img 
+                                    src={item.claimedBy.avatar} 
+                                    alt={item.claimedBy.displayName || item.claimedBy.username}
+                                    className="item-claimed-avatar"
+                                  />
+                                ) : (
+                                  <div
+                                    className="item-claimed-avatar-initial"
+                                    style={{ backgroundColor: item.claimedBy.displayNameColor || '#000' }}
+                                  >
+                                    {(item.claimedBy.displayName || item.claimedBy.username || '?')[0].toUpperCase()}
+                                  </div>
+                                )}
+                                <span 
+                                  className="item-claimed"
+                                  style={{ 
+                                    color: item.claimedBy.displayNameColor || '#000',
+                                    fontWeight: 'bold'
+                                  }}
+                                >
+                                  {isClaimedByMe ? 'YOU' : (item.claimedBy.displayName || item.claimedBy.username)}
+                                </span>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => handleClaimItem(item._id)}
+                                className="claim-button"
+                              >
+                                CLAIM
+                              </button>
+                            )}
+                            {item.status === 'claimed' && (isHost || isClaimedByMe) && (
+                              <button
+                                onClick={() => handleFreeItem(item._id)}
+                                className="delete-item-btn"
+                                title="Free up item"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="no-items-message">No items yet. Host can add items to bring.</p>
+                )}
+              </div>
             </div>
           ) : (
             <div className="no-upcoming-event">

@@ -90,6 +90,14 @@
   font-weight: bold;
   text-align: center;
   text-transform: uppercase;
+  min-height: calc(1rem + 8px + 1rem); /* padding-top + border + padding-bottom */
+  box-sizing: border-box;
+  transition: opacity 0.2s;
+}
+
+.login-error-empty {
+  visibility: hidden;
+  border-color: transparent;
 }
 
 .login-loading {

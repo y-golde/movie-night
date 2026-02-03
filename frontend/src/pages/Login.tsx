@@ -221,7 +221,7 @@ const Login = () => {
                   autoFocus
                 />
               </div>
-              {error && <div className="login-error">{error}</div>}
+              <div className={`login-error ${error ? '' : 'login-error-empty'}`}>{error || '\u00A0'}</div>
               <button type="submit" className="login-button" disabled={isSubmitting}>
                 {isSubmitting ? 'CHECKING...' : 'CONTINUE'}
               </button>
@@ -238,7 +238,7 @@ const Login = () => {
                 onPatternChange={handlePatternChange}
                 disabled={isSubmitting}
               />
-              {error && <div className="login-error">{error}</div>}
+              <div className={`login-error ${error ? '' : 'login-error-empty'}`}>{error || '\u00A0'}</div>
               <div className="login-actions">
                 <button type="button" className="login-button secondary" onClick={handleBack} disabled={isSubmitting}>
                   BACK
@@ -355,7 +355,7 @@ const Login = () => {
                 />
               </div>
 
-              {error && <div className="login-error">{error}</div>}
+              <div className={`login-error ${error ? '' : 'login-error-empty'}`}>{error || '\u00A0'}</div>
               <div className="login-actions">
                 <button type="button" className="login-button secondary" onClick={handleBack} disabled={isSubmitting}>
                   BACK
