@@ -397,17 +397,6 @@ const Main = () => {
     }
   };
 
-  const handleDeleteItem = async (itemId: string) => {
-    if (!confirm('Are you sure you want to delete this item?')) return;
-    
-    try {
-      await api.delete(`/items/${itemId}`);
-      fetchData();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to delete item');
-    }
-  };
-
   const handleRateMovie = async (meetingId: string, movieId: string, rating: number, comment: string) => {
     try {
       if (!comment || comment.trim().length < 50) {

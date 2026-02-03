@@ -371,7 +371,7 @@ const Admin = () => {
     }
   };
 
-  const handleDeleteItemFromMeeting = async (meetingId: string, itemId: string) => {
+  const handleDeleteItemFromMeeting = async (itemId: string) => {
     if (!confirm('Are you sure you want to delete this item?')) return;
     
     try {
@@ -748,7 +748,7 @@ const Admin = () => {
                                       <span className="item-available-admin">AVAILABLE</span>
                                     )}
                                     <button
-                                      onClick={() => handleDeleteItemFromMeeting(meeting._id, item._id)}
+                                      onClick={() => handleDeleteItemFromMeeting(item._id)}
                                       className="delete-item-btn-admin"
                                       title="Delete item"
                                     >
