@@ -51,7 +51,10 @@ router.post('/set-pattern', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid pattern. Must connect at least 4 dots.' });
     }
 
-    const user = await User.findOne({ username: username.trim() });
+    // Case-insensitive username lookup
+    const user = await User.findOne({ 
+      username: { $regex: new RegExp(`^${username.trim()}$`, 'i') }
+    });
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });

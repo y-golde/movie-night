@@ -86,7 +86,7 @@ const Login = () => {
     setError('');
 
     try {
-      const response = await api.post('/auth/check-username', { username: username.trim() });
+      const response = await api.post('/auth/check-username', { username: username.trim().toLowerCase() });
       console.log('Avatar from backend:', response.data.avatar); // Debug log
       setUserAvatar(response.data.avatar || ''); // Set avatar even if null/undefined
       if (response.data.hasPattern) {
@@ -111,7 +111,7 @@ const Login = () => {
     setError('');
 
     try {
-      await login(username.trim(), completedPattern);
+      await login(username.trim().toLowerCase(), completedPattern);
       // Check if there's a redirect path stored
       const redirectPath = sessionStorage.getItem('redirectAfterLogin');
       if (redirectPath) {
@@ -148,7 +148,7 @@ const Login = () => {
 
     try {
       const response = await api.post('/auth/set-pattern', {
-        username: username.trim(),
+        username: username.trim().toLowerCase(),
         pattern: pattern,
         confirmPattern: pattern,
         displayName: displayName.trim() || undefined,
