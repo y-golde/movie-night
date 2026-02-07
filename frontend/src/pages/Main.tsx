@@ -301,7 +301,18 @@ const Main = () => {
       }
 
       // Find the next upcoming meeting
-      const nextUpcoming = sortedUpcoming.length > 0 ? sortedUpcoming[0] : null;
+      // If the soonest meeting is today and there's a future one, prefer the future one
+      let nextUpcoming = sortedUpcoming.length > 0 ? sortedUpcoming[0] : null;
+      if (nextUpcoming && sortedUpcoming.length > 1) {
+        const meetingDate = new Date(nextUpcoming.watchedDate);
+        const today = new Date();
+        const isToday = meetingDate.getFullYear() === today.getFullYear() &&
+          meetingDate.getMonth() === today.getMonth() &&
+          meetingDate.getDate() === today.getDate();
+        if (isToday) {
+          nextUpcoming = sortedUpcoming[1];
+        }
+      }
       setNextUpcomingMeeting(nextUpcoming);
       
       if (nextUpcoming) {
