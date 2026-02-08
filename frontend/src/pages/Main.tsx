@@ -259,7 +259,7 @@ const Main = () => {
         h.status === 'watched' || new Date(h.watchedDate) < now
       );
       const upcoming = historyResponse.data.filter((h: MovieHistory) => 
-        h.status === 'upcoming' || new Date(h.watchedDate) >= now
+        (h.status === 'upcoming' || new Date(h.watchedDate) >= now) && new Date(h.watchedDate) >= now
       );
       
       setPastMeetings(past.sort((a: MovieHistory, b: MovieHistory) => 
