@@ -58,6 +58,13 @@ const Admin = () => {
   const [newItemNames, setNewItemNames] = useState<Record<string, string>>({});
   const [showAddItem, setShowAddItem] = useState<Record<string, boolean>>({});
   const [isAddingItem, setIsAddingItem] = useState<Record<string, boolean>>({});
+  const [editingMeeting, setEditingMeeting] = useState<any | null>(null);
+  const [editMeetingForm, setEditMeetingForm] = useState({
+    watchedDate: '',
+    location: '',
+    theme: '',
+  });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   useEffect(() => {
     // Ensure user is logged in
@@ -279,6 +286,36 @@ const Admin = () => {
       alert(error.response?.data?.error || 'Failed to delete meeting');
     } finally {
       setDeletingMeetingId(null);
+    }
+  };
+
+  const openEditMeeting = (meeting: any) => {
+    const d = new Date(meeting.watchedDate);
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+    setEditMeetingForm({
+      watchedDate: local.toISOString().slice(0, 16),
+      location: meeting.location || '',
+      theme: meeting.theme || '',
+    });
+    setEditingMeeting(meeting);
+  };
+
+  const saveEditMeeting = async () => {
+    if (!editingMeeting) return;
+    setIsSavingEdit(true);
+    try {
+      await api.put(`/movie-history/${editingMeeting._id}`, {
+        watchedDate: editMeetingForm.watchedDate,
+        location: editMeetingForm.location,
+        theme: editMeetingForm.theme,
+      });
+      await fetchMeetings();
+      setEditingMeeting(null);
+      alert('Meeting updated successfully');
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to update meeting');
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -665,6 +702,12 @@ const Admin = () => {
                             </div>
                           )}
                           <div className="meeting-actions-admin">
+                            <button
+                              className="edit-meeting-btn"
+                              onClick={() => openEditMeeting(meeting)}
+                            >
+                              EDIT
+                            </button>
                             {(meeting.movieIds?.length > 0) && (
                               <>
                                 <button
@@ -693,6 +736,56 @@ const Admin = () => {
                           </div>
                         </div>
                       </div>
+                      
+                      {editingMeeting?._id === meeting._id && (
+                        <div className="edit-meeting-modal">
+                          <h3 className="edit-meeting-title">EDIT MEETING</h3>
+                          <div className="edit-meeting-form">
+                            <div className="form-group">
+                              <label>MEETING DATE & TIME</label>
+                              <input
+                                type="datetime-local"
+                                value={editMeetingForm.watchedDate}
+                                onChange={(e) => setEditMeetingForm({ ...editMeetingForm, watchedDate: e.target.value })}
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>LOCATION (OPTIONAL)</label>
+                              <input
+                                type="text"
+                                value={editMeetingForm.location}
+                                onChange={(e) => setEditMeetingForm({ ...editMeetingForm, location: e.target.value })}
+                                placeholder="e.g., hayarden 96 - Ramat gan"
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>THEME (OPTIONAL)</label>
+                              <input
+                                type="text"
+                                value={editMeetingForm.theme}
+                                onChange={(e) => setEditMeetingForm({ ...editMeetingForm, theme: e.target.value })}
+                                placeholder="e.g., sci-fi classics, horror comedies"
+                              />
+                            </div>
+                            <div className="edit-meeting-actions">
+                              <button
+                                className="admin-button"
+                                onClick={() => setEditingMeeting(null)}
+                                disabled={isSavingEdit}
+                              >
+                                CANCEL
+                              </button>
+                              <button
+                                className="admin-button"
+                                onClick={saveEditMeeting}
+                                disabled={isSavingEdit}
+                              >
+                                {isSavingEdit ? 'SAVING...' : 'SAVE'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       
                       {/* Bring List Section for upcoming meetings */}
                       {isUpcoming && (

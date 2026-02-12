@@ -109,6 +109,8 @@ const PatternLock = ({ onPatternComplete, onPatternChange, disabled = false, sho
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (disabled || !isDrawing) return;
+    // Prevent pull-to-refresh/scroll when drawing pattern (mobile)
+    e.preventDefault();
 
     const touch = e.touches[0];
     const element = document.elementFromPoint(touch.clientX, touch.clientY);

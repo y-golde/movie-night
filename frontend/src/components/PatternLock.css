@@ -3,6 +3,9 @@
   flex-direction: column;
   align-items: center;
   gap: 1.5rem;
+  /* Prevent pull-to-refresh/overscroll when drawing pattern on mobile */
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 .pattern-instruction {
@@ -26,6 +29,8 @@
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   transition: box-shadow 0.2s;
   justify-content: center;
+  /* Prevent pull-to-refresh when drawing pattern on mobile */
+  touch-action: none;
 }
 
 .pattern-lock-grid:active {
